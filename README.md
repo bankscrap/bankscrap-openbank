@@ -23,12 +23,12 @@ Or install it yourself as:
 ### From terminal
 #### Bank account balance
 
-    $ bankscrap balance Openbank --user YOUR_USER --password YOUR_PASSWORD --extra=company_code:YOUR_COMPANY_CODE
+    $ bankscrap balance Openbank --user YOUR_USER --password YOUR_PASSWORD
 
 
 #### Transactions
 
-    $ bankscrap transactions Openbank --user YOUR_USER --password YOUR_PASSWORD --extra=company_code:YOUR_COMPANY_CODE
+    $ bankscrap transactions Openbank --user YOUR_USER --password YOUR_PASSWORD
 
 ---
 
