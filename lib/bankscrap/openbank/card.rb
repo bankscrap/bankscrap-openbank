@@ -68,7 +68,6 @@ module Bankscrap
           description: value_at_xpath(data, 'descMovimiento'),
           effective_date: Date.strptime(value_at_xpath(data, 'fechaAnota'), "%Y-%m-%d"),
           #operation_date: Date.strptime(value_at_xpath(data, 'fechaOpera'), "%Y-%m-%d"),
-          currency: currency,
           balance: nil
         )
       end
