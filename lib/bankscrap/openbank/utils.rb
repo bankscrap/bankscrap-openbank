@@ -6,8 +6,11 @@ module Bankscrap
         value ? value.content.strip : default
       end
 
-      def money(data, currency)
-        Money.new(data.gsub('.', ''), currency)
+      def money(data, xpath)
+        Money.new(
+          value_at_xpath(data, xpath + '/IMPORTE').delete('.'),
+          value_at_xpath(data, xpath + '/DIVISA')
+        )
       end
     end
   end

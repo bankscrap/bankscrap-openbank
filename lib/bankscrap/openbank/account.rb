@@ -7,7 +7,7 @@ module Bankscrap
 
       attr_accessor :contract_id
 
-      ACCOUNT_ENDPOINT = '/OPB_BAMOBI_WS_ENS/ws/BAMOBI_WS_Def_Listener'
+      ACCOUNT_ENDPOINT = '/OPB_BAMOBI_WS_ENS/ws/BAMOBI_WS_Def_Listener'.freeze
 
       # Fetch transactions for the given account.
       # By default it fetches transactions for the last month,
@@ -27,7 +27,7 @@ module Bankscrap
 
           repo = document.at_xpath('//methodResult/repo')
           importe_cta = document.at_xpath('//methodResult/importeCta')
-          end_page = !(value_at_xpath(document, '//methodResult/finLista') == 'N')
+          end_page = value_at_xpath(document, '//methodResult/finLista') != 'N'
         end
 
         transactions
@@ -44,7 +44,7 @@ module Bankscrap
           <v1:listaMovCuentasFechas_LIP facade="BAMOBICTA">
             <entrada>
         #{connection.xml_datos_cabecera}
-              <datosConexion>#{connection.user_data.children.to_s}</datosConexion>
+              <datosConexion>#{connection.user_data.children}</datosConexion>
               <contratoID>#{contract_id}</contratoID>
               <fechaDesde>#{xml_from_date}</fechaDesde>
               <fechaHasta>#{xml_to_date}</fechaHasta>
@@ -64,17 +64,15 @@ module Bankscrap
 
       # Build a transaction object from API data
       def build_transaction(data)
-        currency = value_at_xpath(data, 'importe/DIVISA')
-        balance = money(value_at_xpath(data, 'importeSaldo/IMPORTE'), value_at_xpath(data, 'importeSaldo/DIVISA'))
+        p data
         Transaction.new(
           account: self,
           id: value_at_xpath(data, 'numeroMovimiento'),
-          amount: money(value_at_xpath(data, 'importe/IMPORTE'), currency),
+          amount: money(data, 'importe'),
           description: value_at_xpath(data, 'descripcion'),
-          effective_date: Date.strptime(value_at_xpath(data, 'fechaValor'), "%Y-%m-%d"),
-          # TODO Falta fecha operacion
-          currency: currency,
-          balance: balance
+          effective_date: Date.strptime(value_at_xpath(data, 'fechaValor'), '%Y-%m-%d'),
+          # TODO: Bankscrap has no interface to add operation date
+          balance: money(data, 'importeSaldo')
         )
       end
     end
