@@ -64,7 +64,6 @@ module Bankscrap
 
       # Build a transaction object from API data
       def build_transaction(data)
-        p data
         Transaction.new(
           account: self,
           id: value_at_xpath(data, 'numeroMovimiento'),
