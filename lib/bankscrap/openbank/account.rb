@@ -73,7 +73,6 @@ module Bankscrap
           description: value_at_xpath(data, 'descripcion'),
           effective_date: Date.strptime(value_at_xpath(data, 'fechaValor'), "%Y-%m-%d"),
           # TODO Falta fecha operacion
-          currency: currency,
           balance: balance
         )
       end
