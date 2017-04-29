@@ -23,12 +23,12 @@ Or install it yourself as:
 ### From terminal
 #### Bank account balance
 
-    $ bankscrap balance Openbank --user YOUR_USER --password YOUR_PASSWORD
+    $ bankscrap balance Openbank --credentials=user:YOUR_USER --password:YOUR_PASSWORD
 
 
 #### Transactions
 
-    $ bankscrap transactions Openbank --user YOUR_USER --password YOUR_PASSWORD
+    $ bankscrap transactions Openbank --credentials=user:YOUR_USER --password:YOUR_PASSWORD
 
 ---
 
@@ -38,7 +38,7 @@ For more details on usage instructions please read [Bankscrap readme](https://gi
 
 ```ruby
 require 'bankscrap-openbank'
-openbank = Bankscrap::Openbank::Bank.new(YOUR_USER, YOUR_PASSWORD, extra_args: {arg: EXTRA_ARG_1})
+openbank = Bankscrap::Openbank::Bank.new(user: YOUR_USER, password: YOUR_PASSWORD)
 ```
 
 
