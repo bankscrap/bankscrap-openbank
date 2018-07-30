@@ -2,10 +2,12 @@ require_relative 'utils.rb'
 
 module Bankscrap
   module Openbank
-    class Card < Account
+    class Card < ::Bankscrap::Card
       include Utils
 
-      CARD_ENDPOINT = '/OPB_BAMOBI_WS_ENS/ws/BAMOBI_WS_Def_Listener'.freeze
+      attr_accessor :contract_id
+
+      CARD_ENDPOINT = '/my-money/tarjetas/movimientosCategoria'.freeze
 
       # Fetch transactions for the given account.
       # By default it fetches transactions for the last month,
@@ -13,60 +15,36 @@ module Bankscrap
       # Returns an array of BankScrap::Transaction objects
       def fetch_transactions_for(connection, start_date: Date.today - 1.month, end_date: Date.today)
         transactions = []
-        end_page = false
-        repos = nil
-
+        fields = { producto: contract_id,
+                   numeroContrato: id,
+                   pan: pan,
+                   fechaDesde: format_date(start_date),
+                   fechaHasta: format_date(end_date)
+                 }
         # Loop over pagination
-        until end_page
-          document = connection.post(CARD_ENDPOINT, fields: xml_card(connection, start_date, end_date, repos))
-
-          transactions += document.xpath('//lista/dato').map { |data| build_transaction(data) }
-
-          repos = document.at_xpath('//methodResult/repos')
-          end_page = value_at_xpath(document, '//methodResult/finLista') != 'N'
+        until fields.empty?
+          data = connection.get(CARD_ENDPOINT, fields: fields)
+          transactions += data['lista']['movimientos'].map { |data| build_transaction(data) }.compact
+          fields = next_page_fields(data)
         end
 
         transactions
       end
 
-      def xml_card(connection, from_date, to_date, repos)
-        is_pagination = repos ? 'S' : 'N'
-        xml_from_date = xml_date(from_date)
-        xml_to_date = xml_date(to_date)
-        <<-card
-      <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"   xmlns:v1="http://www.isban.es/webservices/BAMOBI/Tarjetas/F_bamobi_tarjetas_lip/internet/BAMOBITAJ/v1">
-        #{connection.xml_security_header}
-        <soapenv:Body>
-          <v1:listaMovTarjetasFechas_LIP facade="BAMOBITAJ">
-            <entrada>
-              <datosConexion>#{connection.user_data.children}</datosConexion>
-              #{connection.xml_datos_cabecera}
-              <contratoTarjeta>#{contract_id}</contratoTarjeta>
-              <numeroTarj>#{id}</numeroTarj>
-              <fechaDesde>#{xml_from_date}</fechaDesde>
-              <fechaHasta>#{xml_to_date}</fechaHasta>
-              <esUnaPaginacion>#{is_pagination}</esUnaPaginacion>
-              #{repos}
-            </entrada>
-          </v1:listaMovTarjetasFechas_LIP>
-        </soapenv:Body>
-      </soapenv:Envelope>
-        card
-      end
-
-      def xml_date(date)
-        "<dia>#{date.day}</dia><mes>#{date.month}</mes><anyo>#{date.year}</anyo>"
+      def fetch_transactions(start_date: Date.today - 2.years, end_date: Date.today)
+        fetch_transactions_for(bank, start_date: start_date, end_date: end_date)
       end
 
       # Build a transaction object from API data
       def build_transaction(data)
+        return if data['estadoPeticion'] == 'L'
         Transaction.new(
           account: self,
-          id: value_at_xpath(data, 'movimDia'),
-          amount: money(data, 'importeMovto'),
-          description: value_at_xpath(data, 'descMovimiento'),
-          effective_date: Date.strptime(value_at_xpath(data, 'fechaAnota'), '%Y-%m-%d'),
-          # operation_date: Date.strptime(value_at_xpath(data, 'fechaOpera'), "%Y-%m-%d"),
+          id: data['numeroMovimintoEnDia'],
+          amount: money(data['impOperacion']),
+          description: data['txtCajero'],
+          effective_date: parse_date(data['fechaAnotacionMovimiento']),
+          operation_date: parse_date(data['fechaMovimiento']),
           balance: Money.new(0, 'EUR') # TODO: Prepaid/debit cards don't have a Balance - maybe Credit ones do.
         )
       end

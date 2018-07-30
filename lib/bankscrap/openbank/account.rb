@@ -7,7 +7,7 @@ module Bankscrap
 
       attr_accessor :contract_id
 
-      ACCOUNT_ENDPOINT = '/OPB_BAMOBI_WS_ENS/ws/BAMOBI_WS_Def_Listener'.freeze
+      ACCOUNT_ENDPOINT = '/my-money/cuentas/movimientos'.freeze
 
       # Fetch transactions for the given account.
       # By default it fetches transactions for the last month,
@@ -15,63 +15,32 @@ module Bankscrap
       # Returns an array of BankScrap::Transaction objects
       def fetch_transactions_for(connection, start_date: Date.today - 1.month, end_date: Date.today)
         transactions = []
-        end_page = false
-        repo = nil
-        importe_cta = nil
 
+        fields = { producto: contract_id,
+                   numeroContrato: id,
+                   fechaDesde: format_date(start_date),
+                   fechaHasta: format_date(end_date),
+                   concepto: '000' }
         # Loop over pagination
-        until end_page
-          document = connection.post(ACCOUNT_ENDPOINT, fields: xml_account(connection, start_date, end_date, repo, importe_cta))
-
-          transactions += document.xpath('//listadoMovimientos/movimiento').map { |data| build_transaction(data) }
-
-          repo = document.at_xpath('//methodResult/repo')
-          importe_cta = document.at_xpath('//methodResult/importeCta')
-          end_page = value_at_xpath(document, '//methodResult/finLista') != 'N'
+        until fields.empty?
+          data = connection.get(ACCOUNT_ENDPOINT, fields: fields)
+          transactions += data['movimientos'].map { |item| build_transaction(item) }
+          fields = next_page_fields(data)
         end
 
         transactions
-      end
-
-      def xml_account(connection, from_date, to_date, repo, importe_cta)
-        is_pagination = repo ? 'S' : 'N'
-        xml_from_date = xml_date(from_date)
-        xml_to_date = xml_date(to_date)
-        <<-account
-      <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"   xmlns:v1="http://www.isban.es/webservices/BAMOBI/Cuentas/F_bamobi_cuentas_lip/internet/BAMOBICTA/v1">
-        #{connection.xml_security_header}
-        <soapenv:Body>
-          <v1:listaMovCuentasFechas_LIP facade="BAMOBICTA">
-            <entrada>
-        #{connection.xml_datos_cabecera}
-              <datosConexion>#{connection.user_data.children}</datosConexion>
-              <contratoID>#{contract_id}</contratoID>
-              <fechaDesde>#{xml_from_date}</fechaDesde>
-              <fechaHasta>#{xml_to_date}</fechaHasta>
-        #{importe_cta}
-              <esUnaPaginacion>#{is_pagination}</esUnaPaginacion>
-        #{repo}
-            </entrada>
-          </v1:listaMovCuentasFechas_LIP>
-        </soapenv:Body>
-      </soapenv:Envelope>
-        account
-      end
-
-      def xml_date(date)
-        "<dia>#{date.day}</dia><mes>#{date.month}</mes><anyo>#{date.year}</anyo>"
       end
 
       # Build a transaction object from API data
       def build_transaction(data)
         Transaction.new(
           account: self,
-          id: value_at_xpath(data, 'numeroMovimiento'),
-          amount: money(data, 'importe'),
-          description: value_at_xpath(data, 'descripcion'),
-          effective_date: Date.strptime(value_at_xpath(data, 'fechaValor'), '%Y-%m-%d'),
-          # TODO: Bankscrap has no interface to add operation date
-          balance: money(data, 'importeSaldo')
+          id: data['nummov'],
+          amount: money(data['importe']),
+          description: data['conceptoTabla'],
+          effective_date: parse_date(data['fechaValor']),
+          operation_date: parse_date(data['fechaOperacion']),
+          balance: money(data['saldo'])
         )
       end
     end

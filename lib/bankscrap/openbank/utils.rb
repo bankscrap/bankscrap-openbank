@@ -1,16 +1,27 @@
 module Bankscrap
   module Openbank
     module Utils
-      def value_at_xpath(node, xpath, default = '')
-        value = node.at_xpath(xpath)
-        value ? value.content.strip : default
+
+      def money(data)
+        Money.new(
+          data['importe'] * 100.0,
+          data['divisa'].presence || 'EUR'
+        )
       end
 
-      def money(data, xpath)
-        Money.new(
-          value_at_xpath(data, xpath + '/IMPORTE').delete('.'),
-          value_at_xpath(data, xpath + '/DIVISA')
-        )
+      def parse_date(date)
+        Date.strptime(date, '%Y-%m-%d')
+      end
+
+      def format_date(date)
+        "%04d-%02d-%02d" % [date.year, date.month, date.day]
+      end
+
+      def next_page_fields(data)
+        link = data&.fetch('_links', nil)&.fetch('nextPage', nil)&.fetch('href', nil)
+        return {} unless link
+        uri = URI.parse(link)
+        URI::decode_www_form(uri.query).to_h
       end
     end
   end
