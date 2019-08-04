@@ -2,6 +2,8 @@
 
 [Bankscrap](https://github.com/bankscrap/bankscrap) adapter for Openbank.
 
+Contact: open an issue or email us at bankscrap@protonmail.com.
+
 ## Installation
 
 Add this line to your application's Gemfile:
